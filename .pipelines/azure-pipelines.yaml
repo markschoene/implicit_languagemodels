@@ -26,7 +26,7 @@ schedules:
   always: true
 
 pool:
- vmImage: ubunut-latest
+ vmImage: ubuntu-latest
 
 strategy:
   matrix:
