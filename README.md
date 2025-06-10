@@ -1,17 +1,89 @@
-# Implicit Languagemodels
-This repository contains the code for our publication, [**"Implicit Languagemodels are RNN: Balancing Parallelization and Expressivity"**](https://arxiv.org/abs/2502.07827).
+<div align="center">
 
-### ICML 2025 Spotlight
+<h1> Implicit Language Models are RNNs</h1>  
+<h3>Balancing Parallelization and Expressivity</h3>
+
+Mark Schöne<sup>1,2 *</sup>, Babak Rahmani<sup>2 *</sup>, Heiner Kremer<sup>2</sup>, Fabian Falck<sup>2</sup>, Hitesh Ballani<sup>2</sup>, Jannes Gladrow<sup>2 $\dagger$</sup>
+
+<sup>1</sup>  TU Dresden, Germany, <sup>2</sup> Microsoft Research, Cambridge, UK
+
+(\*) Equal contribution. ($\dagger$) Corresponding author.
+
+[![arXiv](https://img.shields.io/badge/ArXiv-2502.07827-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2502.07827)
+[![Project](https://img.shields.io/badge/Homepage-AOC-orange.svg?logo=googlehome)](https://www.microsoft.com/en-us/research/project/aoc)
+
+</div>
+
+## ICML 2025 Spotlight
+
 🎉🚀 We are delighted to announce that our paper was spotlighted at ICML 2025! 🚀🎉
 
-### Description
+# Abstract
+State-space models (SSMs) and transformers dominate the language modeling landscape. However, they are constrained to a lower computational complexity than classical recurrent neural networks (RNNs), limiting their expressivity. In contrast, RNNs lack parallelization during training, raising fundamental questions about the trade off between parallelization and expressivity. We propose implicit SSMs, which iterate a transformation until convergence to a fixed point. Theoretically, we show that implicit SSMs implement the non-linear state-transitions of RNNs. Empirically, we find that only approximate fixed-point convergence suffices, enabling the design of a scalable training curriculum that largely retains parallelization, with full convergence required only for a small subset of tokens. Our approach demonstrates superior state-tracking capabilities on regular languages, surpassing transformers and SSMs. We further scale implicit SSMs to natural language reasoning tasks and pretraining of large-scale language models up to 1.3B parameters on 207B tokens - representing, to our knowledge, the largest implicit model trained to date. Notably, our implicit models outperform their explicit counterparts on standard benchmarks.
 
-- The `implicit_llm` folder is importable when this repository is installed as a package. The core implementation of implicit models is defined in `implicit_llm/implicit.py`.
-- Model architectures are defined in the `hf_models` directory.
-- Examples for downstream evaluations can be found in `examples/downstream_evaluation.py`, while an example of improved state-tracking (S5) is provided in `examples/state_tracking.py`.
-- State-tracking datasets for Figures 1 Top Left/Top Right and Figure 3 in the paper are available in the `state_tracking` folder.
-- An example how to calculate the implicit Jacobian as discussed in Theorem 1 (see also A2 and Figure 7) is provided in the implicit_jacobian notebook.
+# Installation
+Requirements:
+- `mamba_ssm` and `causal_conv1d`
 
+Install this package 
+```
+pip install .
+```
+
+# Usage
+The code allows for integration with the HuggingFace Platform.
+We provide local configuration files that can be loaded with `AutoConfig`
+```python
+from transformers import AutoConfig, AutoModel
+import implicit_llm
+
+cfg = AutoConfig.from_pretrained('hf_models/llama3-1.3b-implicit')
+model = AutoModel.from_config(cfg)
+```
+
+# Examples
+
+## State-Tracking
+We provide a simple training script based on the huggingface Trainer. 
+First, generate the dataset [following the instructions](state_tracking/README.md).
+Then, train your models with
+```python
+python -m examples.state_tracking \ 
+    --model_name hf_models/mamba2-state-tracking-implicit \
+    --train_dataset /path/to/data/train_A5_L256_P090.bin \
+    --eval_dataset /path/to/data/test_A5_L256_P050.bin \
+    --test_dataset /path/to/data/test_A5_L256_P050.bin 
+```
+The script works for arbitrary models from the huggingface hub.
+Feel free to train your favorite models!
+
+To evaluate a trained model use the `--eval` flag and point `--model_name` to the trained model checkpoint. 
+E.g. run evaluation on the test set with 1024 tokens
+```python
+python -m examples.state_tracking \ 
+    --model_name path/to/trained/model/checkpoint \
+    --train_dataset /path/to/data/train_A5_L256_P090.bin \
+    --eval_dataset /path/to/data/test_A5_L256_P050.bin \
+    --test_dataset /path/to/data/test_A5_L256_P050.bin
+    --eval 
+```
+
+## Downstream Evaluation of Pretrained Models
+
+## Duality of Simultaneous Fixed Point Iteration and Sequential Fixed Point Iteration
+By default, training always used the simultaneous fixed point iteration, while generation always uses the sequential fixed point iteration.
+We provide examples of evaluating a model in the sequential mode, e.g. to reproduce Figure 2C, in `tests/test_evaluation.py` and in `examples/state_tracking.py`.
+The state tracking example code uses the simultaneous mode for validation during training.
+A sequential pass is done at the end of training on the test set. 
+
+# Common Issues
+    ValueError: The checkpoint you are trying to load has model type `implicit_mamba2` but Transformers does not recognize this architecture.
+
+--> Just `import implicit_llm` to register the implicit models with the HF library, or `
+```
+from implicit_llm import register_implicit_causal_lm
+register_implicit_causal_lm()
+```
 ## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a

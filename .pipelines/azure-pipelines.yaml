@@ -1,0 +1,81 @@
+# Python package
+# Create and test a Python package on multiple Python versions.
+# Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/python
+
+# Ref this for example of ESRP publish to PyPI
+#   https://dev.azure.com/mseng/Python/_git/dlltracer-python
+#
+# ToDo: notes concerning publish via ESRP to PyPI
+#
+#parameters:
+#- name: Publish
+#  displayName: "Publish"
+#  type: boolean
+#  default: false
+
+trigger:
+- main
+
+schedules:
+- cron: '0 0 * * *'
+  displayName: Daily midnight build
+  branches:
+    include:
+    - main
+  always: true
+
+pool:
+ vmImage: ubunut-latest
+
+strategy:
+  matrix:
+    Python310:
+      python.version: '3.10'
+    Python311:
+      python.version: '3.11'
+      isPython311: true
+
+variables:
+  CodeQL.Enabled: true
+  LGTM.UploadSnapshot: true
+
+steps:
+- task: CodeQL3000Init@0
+
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '$(python.version)'
+  displayName: 'Use Python $(python.version)'
+
+- script: |
+    python -m pip install --upgrade pip
+    pip install torch==2.0.1
+    pip install .
+  displayName: 'Install dependencies'
+
+- task: ComponentGovernanceComponentDetection@0
+  inputs:
+    scanType: 'Register'
+    verbosity: 'Verbose'
+    alertWarningLevel: 'High'
+
+- script: |
+    poetry build
+  displayName: 'Building package'
+
+- script: |
+    pytest
+  displayName: 'pytest'
+
+- task: Bandit@1
+  inputs:
+    targetsType: 'guardianGlob'
+    targets: 'f|**/*.py;-|.gdn/**'
+    ruleset: 'guardian'
+
+- task: CodeQL3000Finalize@0
+
+- script: |
+    echo done.
+  displayName: 'done.'
