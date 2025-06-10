@@ -15,6 +15,13 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "torch>=2.0.0",
+    "einops",
+    "opt-einsum>=3.3",
+    "torchdeq",
+    "causal_conv1d",
+    "mamba_ssm",
+    "hydra-core",
+    "matplotlib",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -25,7 +32,7 @@ license-files = ["LICENSE"]
 keywords = ["mamba", "llama", "deep learning", "transformers", "language model", "state-tracking"]
 
 [project.urls]
-Homepage = "https://github.com/microsoft/implicit_languagemodels
+Homepage = "https://github.com/microsoft/implicit_languagemodels"
 Issues = "https://github.com/microsoft/implicit_languagemodels/issues"
 
 
