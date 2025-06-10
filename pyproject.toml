@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "implicit_llm"
+version = "0.1.0"
+authors = [
+  { name="Mark Schoene", email="mark.schoene@tu-dresden.de" },
+  { name="Babak Rahmani", email="t-brahmani@microsoft.com" },
+  { name="Jannes Gladrow", email="jagladro@microsoft.com" },
+]
+description = "A library for implicit LLMs based on the Llama and Mamba architectures."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "torch>=2.0.0",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["mamba", "llama", "deep learning", "transformers", "language model", "state-tracking"]
+
+[project.urls]
+Homepage = "https://github.com/microsoft/implicit_languagemodels
+Issues = "https://github.com/microsoft/implicit_languagemodels/issues"
+
+
+[tool.hatch.build.targets.wheel]  # what gets copied into the wheel
+packages = [
+  "implicit_llm",                 # root package
+]
+
+[tool.hatch.build.targets.sdist]  # sdist usually mirrors wheel
+packages = [
+  "implicit_llm",
+]

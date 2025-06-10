@@ -1,0 +1,38 @@
+{
+  "architectures": [
+    "ImplicitLlamaForCausalLM"
+  ],
+  "average_eval": true,
+  "backbone_config": {
+    "block_cfg": {
+      "n_head": 12
+    },
+    "block_type": "transformer",
+    "d_inner": 3072,
+    "d_model": 768,
+    "dropout": 0.0,
+    "mlp_type": "llama_mlp",
+    "n_layer": 12,
+    "pre_norm": true,
+    "rms_norm": true
+  },
+  "backbone_type": "explicit",
+  "d_embed": 768,
+  "data_info": {},
+  "dataset_name": null,
+  "deq_params": {},
+  "dropout": 0.0,
+  "emb_init_std": 0.01,
+  "head_bias": false,
+  "keep_sequence_dim": false,
+  "model_type": "implicit_llama3",
+  "pad_vocab": false,
+  "pad_vocab_size_multiple": 8,
+  "save_output_ids": false,
+  "tie_embeddings": true,
+  "tokenizer": "EleutherAI/gpt-neox-20b",
+  "torch_dtype": "float32",
+  "transformers_version": "4.51.3",
+  "vocab_size": 50277,
+  "weight_decay": 0.1
+}

@@ -1,0 +1,80 @@
+{
+  "architectures": [
+    "ImplicitLlamaForCausalLM"
+  ],
+  "average_eval": true,
+  "backbone_config": {
+    "block_cfg": {
+      "n_head": 16
+    },
+    "block_type": "transformer",
+    "d_inner": 4096,
+    "d_model": 1024,
+    "dropout": 0.0,
+    "init_gain": 0.5,
+    "mlp_type": "llama_mlp",
+    "n_layer": 24,
+    "pre_norm": true,
+    "pretrain_iter": 4,
+    "pretrain_steps": 0,
+    "rms_norm": true
+  },
+  "backbone_type": "implicit",
+  "d_embed": 1024,
+  "data_info": {},
+  "dataset_name": null,
+  "deq_params": {
+    "norm": {
+      "norm_clip": false,
+      "norm_clip_val": 1.0,
+      "norm_no_scale": false,
+      "norm_target_norm": 1.0,
+      "norm_type": "weight_norm",
+      "sn_n_power_iters": 1
+    },
+    "regularization": {
+      "jac_incremental": 0,
+      "jac_loss_freq": 0.0,
+      "jac_loss_weight": 0.0,
+      "sradius_mode": true
+    },
+    "solver": {
+      "b_max_iter": 32,
+      "b_solver": "fixed_point_iter",
+      "b_stop_mode": "rel",
+      "b_tol": 0.001,
+      "eval_f_max_iter": 0,
+      "eval_factor": 4.0,
+      "f_max_iter": 4,
+      "f_solver": "fixed_point_iter",
+      "f_stop_mode": "rel",
+      "f_tol": 0.05
+    },
+    "training": {
+      "core": "sliced",
+      "gamma": 0.8,
+      "grad": 1,
+      "hook_ift": false,
+      "ift": false,
+      "indexing": [],
+      "n_states": 1,
+      "sup_gap": -1,
+      "sup_loc": [],
+      "tau": 0.8
+    }
+  },
+  "dropout": 0.0,
+  "emb_init_std": 0.01,
+  "head_bias": false,
+  "keep_sequence_dim": false,
+  "model_type": "implicit_llama3",
+  "pad_vocab": false,
+  "pad_vocab_size_multiple": 8,
+  "save_output_ids": false,
+  "tie_embeddings": true,
+  "tokenizer": "EleutherAI/gpt-neox-20b",
+  "torch_dtype": "float32",
+  "transformers_version": "4.51.3",
+  "vocab_size": 50277,
+  "weight_decay": 0.1
+}

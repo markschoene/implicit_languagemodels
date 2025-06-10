@@ -1,0 +1,42 @@
+{
+  "architectures": [
+    "ImplicitMambaForCausalLM"
+  ],
+  "average_eval": true,
+  "backbone_config": {
+    "block_cfg": {
+      "d_state": 128,
+      "expand": 2,
+      "headdim": 64
+    },
+    "block_type": "mamba2",
+    "d_inner": 0,
+    "d_model": 768,
+    "dropout": 0.0,
+    "n_layer": 24,
+    "pre_norm": true,
+    "rms_norm": true
+  },
+  "backbone_type": "explicit",
+  "d_embed": 768,
+  "data_info": {},
+  "dataset_name": null,
+  "deq_params": {},
+  "dropout": 0.0,
+  "emb_init_std": 0.01,
+  "head_bias": false,
+  "keep_sequence_dim": false,
+  "load_from_pretrained_shell": false,
+  "masked_training": false,
+  "model_type": "implicit_mamba2",
+  "n_tokens": 50277,
+  "pad_vocab": false,
+  "pad_vocab_size_multiple": 8,
+  "save_output_ids": false,
+  "tie_embeddings": true,
+  "tokenizer": "EleutherAI/gpt-neox-20b",
+  "torch_dtype": "float32",
+  "transformers_version": "4.51.3",
+  "vocab_size": 50277,
+  "weight_decay": 0.1
+}
