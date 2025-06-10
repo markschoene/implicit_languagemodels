@@ -1,14 +1,16 @@
-# Project
+# Implicit Languagemodels
+This repository contains the code for our publication, [**"Implicit Languagemodels are RNN: Balancing Parallelization and Expressivity"**](https://arxiv.org/abs/2502.07827).
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+### ICML 2025 Spotlight
+🎉🚀 We are delighted to announce that our paper was spotlighted at ICML 2025! 🚀🎉
 
-As the maintainer of this project, please make a few updates:
+### Description
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+- The `implicit_llm` folder is importable when this repository is installed as a package. The core implementation of implicit models is defined in `implicit_llm/implicit.py`.
+- Model architectures are defined in the `hf_models` directory.
+- Examples for downstream evaluations can be found in `examples/downstream_evaluation.py`, while an example of improved state-tracking (S5) is provided in `examples/state_tracking.py`.
+- State-tracking datasets for Figures 1 Top Left/Top Right and Figure 3 in the paper are available in the `state_tracking` folder.
+- An example how to calculate the implicit Jacobian as discussed in Theorem 1 (see also A2 and Figure 7) is provided in the implicit_jacobian notebook.
 
 ## Contributing
 
