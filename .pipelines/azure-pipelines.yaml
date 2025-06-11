@@ -3,16 +3,6 @@
 # Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/python
 
-# Ref this for example of ESRP publish to PyPI
-#   https://dev.azure.com/mseng/Python/_git/dlltracer-python
-#
-# ToDo: notes concerning publish via ESRP to PyPI
-#
-#parameters:
-#- name: Publish
-#  displayName: "Publish"
-#  type: boolean
-#  default: false
 
 trigger:
 - main
@@ -57,8 +47,11 @@ steps:
 
 - script: |
     python -m pip install --upgrade pip
-    pip install torch==$(torch.version) packaging==25.0 hatchling>=1.26
-    pip install . --no-build-isolation
+    pip install uv
+    uv venv .venv
+    source .venv/bin/activate
+    uv pip install torch==$(torch.version) packaging==25.0 hatchling>=1.26
+    uv pip install . --no-build-isolation
   displayName: 'Install dependencies'
 
 - task: ComponentGovernanceComponentDetection@0
@@ -66,14 +59,6 @@ steps:
     scanType: 'Register'
     verbosity: 'Verbose'
     alertWarningLevel: 'High'
-
-- script: |
-    poetry build
-  displayName: 'Building package'
-
-- script: |
-    pytest
-  displayName: 'pytest'
 
 - task: Bandit@1
   inputs:
