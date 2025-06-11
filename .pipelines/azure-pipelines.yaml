@@ -32,15 +32,16 @@ strategy:
   matrix:
     Python310:
       python.version: '3.10'
+      torch.version: '2.3'
     Python311:
       python.version: '3.11'
-      isPython311: true
+      torch.version: '2.4'
     Python312:
       python.version: '3.12'
-      isPython312: true
+      torch.version: '2.5'
     Python313:
       python.version: '3.13'
-      isPython313: true
+      torch.version: '2.6'
 
 variables:
   CodeQL.Enabled: true
@@ -56,7 +57,7 @@ steps:
 
 - script: |
     python -m pip install --upgrade pip
-    pip install torch==2.5 packaging==25.0
+    pip install torch==$(torch.version) packaging==25.0 hatchling>=1.26
     pip install . --no-build-isolation
   displayName: 'Install dependencies'
 
