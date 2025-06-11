@@ -14,7 +14,7 @@ description = "A library for implicit LLMs based on the Llama and Mamba architec
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    # torch 2.7
+    # torch 2.7 appears to have compatibility issues with mamba_ssm
     "torch>=2.0,<=2.6",
     "einops",
     "opt-einsum>=3.3",
@@ -46,9 +46,4 @@ packages = [
 [tool.hatch.build.targets.sdist]  # sdist usually mirrors wheel
 packages = [
   "implicit_llm",
-]
-
-[tool.uv.workspace]
-members = [
-    "venv",
 ]
