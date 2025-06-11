@@ -35,6 +35,12 @@ strategy:
     Python311:
       python.version: '3.11'
       isPython311: true
+    Python312:
+      python.version: '3.12'
+      isPython312: true
+    Python313:
+      python.version: '3.13'
+      isPython313: true
 
 variables:
   CodeQL.Enabled: true
