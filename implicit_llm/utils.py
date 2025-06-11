@@ -38,7 +38,7 @@ def load_checkpoint(pretrained_model_name_or_path: str) -> dict:
             raise FileNotFoundError(
                 f"Checkpoint file not found at {checkpoint_path}. Expected a file named pytorch_model.bin."
             )
-        state_dict = torch.load(checkpoint_path, map_location="cpu")
+        state_dict = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     return state_dict
 
 

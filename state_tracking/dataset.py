@@ -177,7 +177,7 @@ class HuggingFaceDataset(torch.utils.data.Dataset):
     """
 
     def __init__(self, path):
-        self.data = torch.load(path)
+        self.data = torch.load(path, weight_only=True)
         self.inputs = self.data["inputs"]
         self.targets = self.data["targets"]
         self.vocab_size = self.data["vocab_size"].item()
