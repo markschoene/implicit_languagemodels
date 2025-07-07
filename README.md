@@ -84,7 +84,7 @@ A sequential pass is done at the end of training on the test set.
 from implicit_llm import register_implicit_causal_lm
 register_implicit_causal_lm()
 ```
-## Contributing
+# Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
@@ -98,10 +98,22 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
-## Trademarks
+# Trademarks
 
 This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
 trademarks or logos is subject to and must follow 
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.
+
+# Citation
+```
+@inproceedings{
+schone2025implicit,
+title={Implicit Language Models are {RNN}s: Balancing Parallelization and Expressivity},
+author={Mark Sch{\"o}ne and Babak Rahmani and Heiner Kremer and Fabian Falck and Hitesh Ballani and Jannes Gladrow},
+booktitle={Forty-second International Conference on Machine Learning},
+year={2025},
+url={https://openreview.net/forum?id=5EbiopWH6e}
+}
+```
