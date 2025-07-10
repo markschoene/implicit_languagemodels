@@ -371,6 +371,7 @@ class Mamba2(nn.Module):
         conv_bias=True,
         state_noise_db=20.0,
         latent_noise_db=20.0,
+        noise_mode="multiplicative",  # 'additive' or 'multiplicative'
         # Fused kernel and sharding options
         chunk_size=256,
         use_mem_eff_path=True,
@@ -388,6 +389,7 @@ class Mamba2(nn.Module):
         # inject noise
         self.state_noise_db = state_noise_db
         self.latent_noise_db = latent_noise_db
+        self.noise_mode = noise_mode
 
         self.d_model = d_model
         self.d_state = d_state
@@ -542,13 +544,7 @@ class Mamba2(nn.Module):
             and cache_position[0] > 0
         ):
             # apply noise to states and inputs
-            apply_gaussian_noise(
-                cache_params.conv_states[self.layer_idx], self.state_noise_db
-            )
-            apply_gaussian_noise(
-                cache_params.ssm_states[self.layer_idx], self.state_noise_db
-            )
-            apply_gaussian_noise(u, self.latent_noise_db)
+            apply_gaussian_noise(u, snr_db=self.latent_noise_db, mode=self.noise_mode)
 
             # extract per-layer states
             conv_state = cache_params.conv_states[self.layer_idx]
@@ -562,6 +558,17 @@ class Mamba2(nn.Module):
             ):  # implicit models only update kv cache on last iteration
                 cache_params.conv_states[self.layer_idx].copy_(new_conv)
                 cache_params.ssm_states[self.layer_idx].copy_(new_ssm)
+
+                apply_gaussian_noise(
+                    cache_params.conv_states[self.layer_idx],
+                    self.state_noise_db,
+                    mode=self.noise_mode,
+                )
+                apply_gaussian_noise(
+                    cache_params.ssm_states[self.layer_idx],
+                    self.state_noise_db,
+                    mode=self.noise_mode,
+                )
             return out
 
         # ---------------------------------------------

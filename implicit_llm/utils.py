@@ -1,7 +1,7 @@
 import json
 import os
 from typing import Optional, Any
-
+import math
 import numpy as np
 import torch
 import torch.nn as nn
@@ -27,24 +27,22 @@ def gaussian_noise(
     snr_linear = 10 ** (snr_db / 10)
 
     # Calculate the power of the signal (tensor)
-    signal_power = tensor.pow(2)
+    signal_power = tensor.pow(2).mean()
 
     # Calculate the noise power based on the SNR (in linear scale)
     noise_power = signal_power / snr_linear
 
-    # Generate Gaussian noise with zero mean and the calculated standard deviation
-    noise_std = torch.sqrt(noise_power)
-
     if mode == "additive":
-        # Generate noise and add it to the tensor
+        # std chosen from global mean power
+        noise_std = math.sqrt(noise_power)
         noise = torch.randn_like(tensor) * noise_std
         tensor.copy_(tensor + noise)
-    elif mode == "multiplicative":
-        # Generate multiplicative noise (1 + noise factor) and multiply with the tensor
+
+    else:  # mode == "multiplicative"
+        # y = x · (1 + n)  with  n ~ N(0, 1/SNR), σ independent of x
+        noise_std = 1.0 / math.sqrt(snr_linear)
         noise = torch.randn_like(tensor) * noise_std
-        tensor.copy_(tensor * (1 + noise))
-    else:
-        raise ValueError("Mode must be either 'additive' or 'multiplicative'")
+        return tensor.copy_(tensor * (1.0 + noise))
 
 
 def apply_gaussian_noise(tree: Any, snr_db: float, mode: str = "additive") -> Any:
@@ -59,14 +57,15 @@ def apply_gaussian_noise(tree: Any, snr_db: float, mode: str = "additive") -> An
     Returns:
         torch.Tensor: The tensor with Gaussian noise applied.
     """
-    if isinstance(tree, torch.Tensor):
-        return gaussian_noise(tree, snr_db, mode)
-    elif isinstance(tree, dict):
-        return {k: gaussian_noise(v, snr_db, mode) for k, v in tree.items()}
-    elif isinstance(tree, list):
-        return [gaussian_noise(item, snr_db, mode) for item in tree]
-    else:
-        raise TypeError("Unsupported type for Gaussian noise application.")
+    if snr_db > 0.0:
+        if isinstance(tree, torch.Tensor):
+            gaussian_noise(tree, snr_db, mode)
+        elif isinstance(tree, dict):
+            return {k: apply_gaussian_noise(v, snr_db, mode) for k, v in tree.items()}
+        elif isinstance(tree, list):
+            return [apply_gaussian_noise(item, snr_db, mode) for item in tree]
+        else:
+            raise TypeError("Unsupported type for Gaussian noise application.")
 
 
 def load_checkpoint(pretrained_model_name_or_path: str) -> dict:

@@ -7,14 +7,17 @@
     "block_cfg": {
       "d_state": 128,
       "expand": 2,
-      "headdim": 64
+      "headdim": 64,
+      "noise_mode": "additive",
+      "state_noise_db": 40.0,
+      "latent_noise_db": 40.0
     },
     "block_type": "mamba2",
     "d_inner": 0,
     "d_model": 768,
     "dropout": 0.0,
     "init_gain": 0.5,
-    "n_layer": 24,
+    "n_layer": 32,
     "pre_norm": true,
     "pretrain_iter": 4,
     "pretrain_steps": 0,

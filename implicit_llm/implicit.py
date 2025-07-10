@@ -24,7 +24,8 @@ class ImplicitMixin(nn.Module):
     def convergence_warning(self, idx, diff, steps):
         if steps >= self.f_thres - 1:
             print(
-                    f"Token {idx:4d} Warning: DEQ did not converge with rel diff {diff:.3f} after {steps} steps", "red"
+                f"Token {idx:4d} Warning: DEQ did not converge with rel diff {diff:.3f} after {steps} steps",
+                "red",
             )
 
     def is_pretraining(self):
@@ -51,7 +52,9 @@ class ImplicitMixin(nn.Module):
         # return new_cache. The CacheRetainer class will retain the cache from the last iteration
         return z
 
-    def implicit_forward(self, hidden_states: Tensor, mixer_kwargs: dict = {}) -> tuple[Tensor, Tensor, dict]:
+    def implicit_forward(
+        self, hidden_states: Tensor, mixer_kwargs: dict = {}
+    ) -> tuple[Tensor, Tensor, dict]:
         """
         DEQ forward pass.
 
@@ -75,17 +78,30 @@ class ImplicitMixin(nn.Module):
         # compute the DEQ output
         if self.training:
             if self.is_pretraining():
-                output, log_dict = self._weighttied_parallel_forward(injected_states, zs, n_iter=self.pretrain_iter, mixer_kwargs=mixer_kwargs)
+                output, log_dict = self._weighttied_parallel_forward(
+                    injected_states,
+                    zs,
+                    n_iter=self.pretrain_iter,
+                    mixer_kwargs=mixer_kwargs,
+                )
             else:
-                output, log_dict = self._simultaneous_forward(injected_states, zs, mixer_kwargs)
+                output, log_dict = self._simultaneous_forward(
+                    injected_states, zs, mixer_kwargs
+                )
         else:
-            output, log_dict = self._sequential_forward(injected_states, zs, mixer_kwargs)
+            output, log_dict = self._sequential_forward(
+                injected_states, zs, mixer_kwargs
+            )
 
         # compute the Jacobian regularization loss
         # torch runs into issues when trying to compute gradients while in eval mode due to torch.no_grad()
-        compute_jac_loss = self.jac_loss_weight > 0.0 and torch.rand(1).item() < self.jac_loss_freq
+        compute_jac_loss = (
+            self.jac_loss_weight > 0.0 and torch.rand(1).item() < self.jac_loss_freq
+        )
         if self.training and compute_jac_loss:
-            jac_loss = self.jac_loss_weight * jac_reg(self.func(output, injected_states), output)
+            jac_loss = self.jac_loss_weight * jac_reg(
+                self.func(output, injected_states), output
+            )
         else:
             jac_loss = torch.tensor(0.0).to(output.device)
         log_dict["jac_loss"] = jac_loss
@@ -93,7 +109,12 @@ class ImplicitMixin(nn.Module):
         return output, jac_loss, log_dict
 
     def _weighttied_parallel_forward(
-        self, x: Tensor, zs: Tensor, n_iter: int, indexing: bool = False, mixer_kwargs: dict = {}
+        self,
+        x: Tensor,
+        zs: Tensor,
+        n_iter: int,
+        indexing: bool = False,
+        mixer_kwargs: dict = {},
     ) -> tuple[Tensor, dict]:
         """
         Formerly _pretrain_forward.
@@ -102,9 +123,9 @@ class ImplicitMixin(nn.Module):
         zs = self.func(zs, x, mixer_kwargs=mixer_kwargs)
         indexing_list = [] if not indexing else [zs]
         # run the DEQ for a fixed number of steps
-        for _ in range(n_iter-1):
+        for _ in range(n_iter - 1):
             z_f = self.func(zs, x, mixer_kwargs=mixer_kwargs)
-            zs = (1.0-self.tau) * zs + self.tau * z_f
+            zs = (1.0 - self.tau) * zs + self.tau * z_f
             if indexing:
                 indexing_list.append(zs)
 
@@ -115,7 +136,9 @@ class ImplicitMixin(nn.Module):
 
         return zs, log_dict
 
-    def _simultaneous_forward(self, x: Tensor, zs: Tensor, mixer_kwargs: dict) -> tuple[Tensor, dict]:
+    def _simultaneous_forward(
+        self, x: Tensor, zs: Tensor, mixer_kwargs: dict
+    ) -> tuple[Tensor, dict]:
         # run the DEQ
 
         func_to_use = partial(self.func, u=x, mixer_kwargs=mixer_kwargs)
@@ -133,9 +156,10 @@ class ImplicitMixin(nn.Module):
 
         return output, log_dict
 
-
-    def _sequential_step(self, u: Tensor, z: Tensor, mixer_kwargs: dict, is_first_token=False) -> tuple[Tensor, dict]:
-        """"
+    def _sequential_step(
+        self, u: Tensor, z: Tensor, mixer_kwargs: dict, is_first_token=False
+    ) -> tuple[Tensor, dict]:
+        """ "
         Args:
         u: injected input (B, D_in_proj)
         z: the initial state (B, D)
@@ -152,6 +176,7 @@ class ImplicitMixin(nn.Module):
 
         def absolute_diff(a, b) -> Tensor:
             return torch.norm(b - a)
+
         # For the iterative loop, disable kv updates.
         mixer_kwargs["skip_kv_update"] = True
 
@@ -163,7 +188,9 @@ class ImplicitMixin(nn.Module):
 
             z_next = self.func(z, u, mixer_kwargs)
             if self.ema_alpha:
-                moving_average_next = (1 - self.ema_alpha) * moving_average + self.ema_alpha * z_next
+                moving_average_next = (
+                    1 - self.ema_alpha
+                ) * moving_average + self.ema_alpha * z_next
                 diff_rel = relative_diff(moving_average, moving_average_next)
                 diff_abs = absolute_diff(moving_average, moving_average_next)
                 moving_average = moving_average_next
@@ -189,9 +216,12 @@ class ImplicitMixin(nn.Module):
             "rel diff": diff_rel,
             "steps": steps,
         }
+        print(log_dict)
         return final_output, log_dict
 
-    def _sequential_forward(self, x: Tensor, zs: Tensor, mixer_kwargs: dict) -> tuple[Tensor, list[dict]]:
+    def _sequential_forward(
+        self, x: Tensor, zs: Tensor, mixer_kwargs: dict
+    ) -> tuple[Tensor, list[dict]]:
         """
         Run the DEQ model sequentially for each token in the input sequence.
         Args:
