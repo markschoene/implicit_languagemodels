@@ -14,17 +14,22 @@ def sequential_forward(model, input_ids):
     Helper function to sequentially step though a sequence and compute logits for each token.
     """
     model.eval()
+    is_implicit = model.config.backbone_type == "implicit"
     with torch.no_grad():
         if isinstance(model, ImplicitMambaForCausalLM):
-            output = sequential_forward_mamba(model, input_ids=input_ids)
+            output = sequential_forward_mamba(
+                model, input_ids=input_ids, is_implicit=is_implicit
+            )
         elif isinstance(model, ImplicitLlamaForCausalLM):
-            output = sequential_forward_llama(model, input_ids=input_ids)
+            output = sequential_forward_llama(
+                model, input_ids=input_ids, is_implicit=is_implicit
+            )
         else:
             raise ValueError("Model type not supported for sequential evaluation.")
     return output
 
 
-def sequential_forward_mamba(model, input_ids):
+def sequential_forward_mamba(model, input_ids, is_implicit=True):
     """
     Perform a sequential forward pass with a Mamba state-space model.
     """
@@ -52,17 +57,20 @@ def sequential_forward_mamba(model, input_ids):
             cache_position=torch.LongTensor([t]).to(input_ids.device),
         )
         append(out)
-    
+
     # Concatenate logits and other outputs
     logits = torch.cat(logits, dim=1)
     last_hidden_states = torch.stack(last_hidden_states, dim=1)
-    
+
     # average implicit metrics across the sequence
-    implicit_metrics = {
-        key: torch.stack([metric[key] for metric in implicit_metrics]).mean()
-        for key in implicit_metrics[0].keys()
-    }
-    
+    if is_implicit:
+        implicit_metrics = {
+            key: torch.stack([metric[key] for metric in implicit_metrics]).mean()
+            for key in implicit_metrics[0].keys()
+        }
+    else:
+        implicit_metrics = {}
+
     output = ImplicitCausalLMOutputWithPastMamba(
         loss=None,  # Loss is not computed in this forward pass
         logits=logits,
@@ -74,7 +82,7 @@ def sequential_forward_mamba(model, input_ids):
     return output
 
 
-def sequential_forward_llama(model, input_ids):
+def sequential_forward_llama(model, input_ids, is_implicit=True):
     """
     Perform a sequential forward pass with a Llama transformer model.
     """
@@ -118,12 +126,15 @@ def sequential_forward_llama(model, input_ids):
         attentions = torch.stack(attentions, dim=1)
     else:
         attentions = None
-    
+
     # average implicit metrics across the sequence
-    implicit_metrics = {
-        key: torch.stack([metric[key] for metric in implicit_metrics]).mean()
-        for key in implicit_metrics[0].keys()
-    }    
+    if is_implicit:
+        implicit_metrics = {
+            key: torch.stack([metric[key] for metric in implicit_metrics]).mean()
+            for key in implicit_metrics[0].keys()
+        }
+    else:
+        implicit_metrics = {}
 
     output = ImplicitCausalLMOutputWithPastLlama(
         loss=None,  # Loss is not computed in this forward pass

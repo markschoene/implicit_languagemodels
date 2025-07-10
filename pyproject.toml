@@ -21,9 +21,10 @@ dependencies = [
     "torchdeq",
     "causal_conv1d==1.5.0.post8",
     "mamba_ssm==2.2.4",
-    "hydra-core",
     "matplotlib",
     "triton",
+    "pydantic",
+    "lighteval",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

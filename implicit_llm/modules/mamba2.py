@@ -244,13 +244,18 @@ is_fast_path_available = all(
 print(f"Fast path available: {is_fast_path_available}")
 
 from ..modules.dropout import VariationalDropout1d
+from ..utils import apply_gaussian_noise
 
 
 def apply_mask_to_padding_states(hidden_states, attention_mask):
     """
     Tunes out the hidden states for padding tokens, see https://github.com/state-spaces/mamba/issues/66
     """
-    if attention_mask is not None and attention_mask.shape[1] > 1 and attention_mask.shape[0] > 1:
+    if (
+        attention_mask is not None
+        and attention_mask.shape[1] > 1
+        and attention_mask.shape[0] > 1
+    ):
         dtype = hidden_states.dtype
         hidden_states = (hidden_states * attention_mask[:, :, None]).to(dtype)
 
@@ -307,7 +312,9 @@ class Mamba2Cache:
             dtype=dtype,
         )
 
-    def update_conv_state(self, layer_idx: int, new_conv_state: torch.Tensor, cache_init: bool = False):
+    def update_conv_state(
+        self, layer_idx: int, new_conv_state: torch.Tensor, cache_init: bool = False
+    ):
         """
         Update the convolution circular buffer for layer `layer_idx`.
         - new_conv_state should be shape [batch, conv_dim, kernel_size] if cache_init=True,
@@ -316,7 +323,11 @@ class Mamba2Cache:
         if cache_init:
             # initialize full buffer
             # expect new_conv_state.shape == (B, conv_dim, W)
-            self.conv_states[layer_idx].copy_(new_conv_state.to(self.conv_states.dtype, device=self.conv_states.device))
+            self.conv_states[layer_idx].copy_(
+                new_conv_state.to(
+                    self.conv_states.dtype, device=self.conv_states.device
+                )
+            )
         else:
             # shift left and insert new last column
             # new_conv_state: (B, conv_dim)
@@ -329,7 +340,9 @@ class Mamba2Cache:
         Replace the SSM state for layer `layer_idx`.
         - new_ssm_state should be shape [batch, nheads, headdim, d_state].
         """
-        self.ssm_states[layer_idx].copy_(new_ssm_state.to(self.ssm_states.dtype, device=self.ssm_states.device))
+        self.ssm_states[layer_idx].copy_(
+            new_ssm_state.to(self.ssm_states.dtype, device=self.ssm_states.device)
+        )
 
 
 class Mamba2(nn.Module):
@@ -356,6 +369,8 @@ class Mamba2(nn.Module):
         dt_limit=(0.0, float("inf")),
         bias=False,
         conv_bias=True,
+        state_noise_db=20.0,
+        latent_noise_db=20.0,
         # Fused kernel and sharding options
         chunk_size=256,
         use_mem_eff_path=True,
@@ -369,6 +384,11 @@ class Mamba2(nn.Module):
     ):
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
+
+        # inject noise
+        self.state_noise_db = state_noise_db
+        self.latent_noise_db = latent_noise_db
+
         self.d_model = d_model
         self.d_state = d_state
         self.d_conv = d_conv
@@ -401,9 +421,13 @@ class Mamba2(nn.Module):
         if allow_negative_A_EV:
             assert self.use_pscan, "Only support allow_negative_A_EV with pscan"
         # Order: [z, x, B, C, dt]
-        self.d_in_proj = 2 * self.d_inner + 2 * self.ngroups * self.d_state + self.nheads
+        self.d_in_proj = (
+            2 * self.d_inner + 2 * self.ngroups * self.d_state + self.nheads
+        )
         if self.process_group is None:
-            self.in_proj = nn.Linear(self.d_model, self.d_in_proj, bias=bias, **factory_kwargs)
+            self.in_proj = nn.Linear(
+                self.d_model, self.d_in_proj, bias=bias, **factory_kwargs
+            )
         else:
             self.in_proj = ColumnParallelLinear(
                 self.d_model,
@@ -431,7 +455,9 @@ class Mamba2(nn.Module):
 
         # Initialize log dt bias
         dt = torch.exp(
-            torch.rand(self.nheads, **factory_kwargs) * (math.log(dt_max) - math.log(dt_min)) + math.log(dt_min)
+            torch.rand(self.nheads, **factory_kwargs)
+            * (math.log(dt_max) - math.log(dt_min))
+            + math.log(dt_min)
         )
         dt = torch.clamp(dt, min=dt_init_floor)
         # Inverse of softplus: https://github.com/pytorch/pytorch/issues/72759
@@ -442,13 +468,17 @@ class Mamba2(nn.Module):
         self.dt_bias._no_weight_decay = True
 
         assert A_init_range[0] > 0 and A_init_range[1] >= A_init_range[0]
-        A = torch.empty(self.nheads, dtype=torch.float32, device=device).uniform_(*A_init_range)
+        A = torch.empty(self.nheads, dtype=torch.float32, device=device).uniform_(
+            *A_init_range
+        )
         A_log = torch.log(A).to(dtype=dtype)
         self.A_log = nn.Parameter(A_log)
         self.A_log._no_weight_decay = True
 
         # D "skip" parameter
-        self.D = nn.Parameter(torch.ones(self.d_ssm if self.D_has_hdim else self.nheads, device=device))
+        self.D = nn.Parameter(
+            torch.ones(self.d_ssm if self.D_has_hdim else self.nheads, device=device)
+        )
         self.D._no_weight_decay = True
 
         # Dropout
@@ -465,7 +495,9 @@ class Mamba2(nn.Module):
             )
 
         if self.process_group is None:
-            self.out_proj = nn.Linear(self.d_inner, self.d_model, bias=bias, **factory_kwargs)
+            self.out_proj = nn.Linear(
+                self.d_inner, self.d_model, bias=bias, **factory_kwargs
+            )
         else:
             self.out_proj = RowParallelLinear(
                 self.d_inner * self.world_size,
@@ -504,13 +536,30 @@ class Mamba2(nn.Module):
         # ---------------------------------------------
         # 1. Handle step-wise inference via cache
         # ---------------------------------------------
-        if cache_params is not None and cache_position is not None and cache_position[0] > 0:
+        if (
+            cache_params is not None
+            and cache_position is not None
+            and cache_position[0] > 0
+        ):
+            # apply noise to states and inputs
+            apply_gaussian_noise(
+                cache_params.conv_states[self.layer_idx], self.state_noise_db
+            )
+            apply_gaussian_noise(
+                cache_params.ssm_states[self.layer_idx], self.state_noise_db
+            )
+            apply_gaussian_noise(u, self.latent_noise_db)
+
             # extract per-layer states
             conv_state = cache_params.conv_states[self.layer_idx]
             ssm_state = cache_params.ssm_states[self.layer_idx]
-            out, (new_conv, new_ssm) = self.step(u, injected_inputs, conv_state, ssm_state)
+            out, (new_conv, new_ssm) = self.step(
+                u, injected_inputs, conv_state, ssm_state
+            )
             # update cache
-            if not skip_kv_update:  # implicit models only update kv cache on last iteration
+            if (
+                not skip_kv_update
+            ):  # implicit models only update kv cache on last iteration
                 cache_params.conv_states[self.layer_idx].copy_(new_conv)
                 cache_params.ssm_states[self.layer_idx].copy_(new_ssm)
             return out
@@ -536,7 +585,9 @@ class Mamba2(nn.Module):
 
         # prepare A and dt limits
         A = -torch.exp(self.A_log)
-        dt_kwargs = {} if self.dt_limit == (0.0, float("inf")) else dict(dt_limit=self.dt_limit)
+        dt_kwargs = (
+            {} if self.dt_limit == (0.0, float("inf")) else dict(dt_limit=self.dt_limit)
+        )
 
         # fused mem-efficient path
         if self.use_mem_eff_path and cache_params is None:
@@ -546,7 +597,11 @@ class Mamba2(nn.Module):
                 self.conv1d.bias,
                 self.dt_bias,
                 A,
-                D=rearrange(self.D, "(h p) -> h p", p=self.headdim) if self.D_has_hdim else self.D,
+                D=(
+                    rearrange(self.D, "(h p) -> h p", p=self.headdim)
+                    if self.D_has_hdim
+                    else self.D
+                ),
                 chunk_size=self.chunk_size,
                 seq_idx=seq_idx,
                 activation=self.activation,
@@ -566,17 +621,30 @@ class Mamba2(nn.Module):
                 out = reduce_fn(out, self.process_group)
         else:
             # split projected states: z0, x0, z, xBC, dt
-            d_mlp = (zxbcdt.shape[-1] - 2 * self.d_ssm - 2 * self.ngroups * self.d_state - self.nheads) // 2
+            d_mlp = (
+                zxbcdt.shape[-1]
+                - 2 * self.d_ssm
+                - 2 * self.ngroups * self.d_state
+                - self.nheads
+            ) // 2
             z0, x0, z, xBC, dt = torch.split(
                 zxbcdt,
-                [d_mlp, d_mlp, self.d_ssm, self.d_ssm + 2 * self.ngroups * self.d_state, self.nheads],
+                [
+                    d_mlp,
+                    d_mlp,
+                    self.d_ssm,
+                    self.d_ssm + 2 * self.ngroups * self.d_state,
+                    self.nheads,
+                ],
                 dim=-1,
             )
             # conv transformation
             if cache_params is not None:
                 # init cache at seq start
                 xBC_t = rearrange(xBC, "b l d -> b d l")
-                cache_params.conv_states[self.layer_idx].copy_(F.pad(xBC_t, (self.d_conv - xBC_t.shape[-1], 0)))
+                cache_params.conv_states[self.layer_idx].copy_(
+                    F.pad(xBC_t, (self.d_conv - xBC_t.shape[-1], 0))
+                )
             if causal_conv1d_fn is None or self.activation not in ["silu", "swish"]:
                 xBC = self.act(self.conv1d(xBC.transpose(1, 2)).transpose(1, 2))
             else:
@@ -599,8 +667,16 @@ class Mamba2(nn.Module):
                 rearrange(B, "b l (g n) -> b l g n", g=self.ngroups),
                 rearrange(C, "b l (g n) -> b l g n", g=self.ngroups),
                 chunk_size=self.chunk_size,
-                D=rearrange(self.D, "(h p) -> h p", p=self.headdim) if self.D_has_hdim else self.D,
-                z=rearrange(z, "b l (h p) -> b l h p", p=self.headdim) if not self.rmsnorm else None,
+                D=(
+                    rearrange(self.D, "(h p) -> h p", p=self.headdim)
+                    if self.D_has_hdim
+                    else self.D
+                ),
+                z=(
+                    rearrange(z, "b l (h p) -> b l h p", p=self.headdim)
+                    if not self.rmsnorm
+                    else None
+                ),
                 dt_bias=self.dt_bias,
                 dt_softplus=True,
                 seq_idx=seq_idx,
@@ -621,7 +697,11 @@ class Mamba2(nn.Module):
         return self.drop(out)
 
     def step(
-        self, hidden_states: Tensor, injected_inputs: Tensor, conv_state: Tensor, ssm_state: Tensor
+        self,
+        hidden_states: Tensor,
+        injected_inputs: Tensor,
+        conv_state: Tensor,
+        ssm_state: Tensor,
     ) -> Tuple[Tensor, Tuple[Tensor, Tensor]]:
         """
         Sequentially step through a sequence and carry over internal states for convolutions and state-space models.
@@ -640,31 +720,56 @@ class Mamba2(nn.Module):
         dtype = hidden_states.dtype
 
         if hidden_states.dim() > 2:
-            assert hidden_states.shape[1] == 1, "Only support decoding with 1 token at a time for now"
+            assert (
+                hidden_states.shape[1] == 1
+            ), "Only support decoding with 1 token at a time for now"
             hidden_states = hidden_states.squeeze(1)
         zxbcdt = self.in_proj(hidden_states)  # (B 2D)
 
         # inject inputs
         if injected_inputs is not None:
             if injected_inputs.dim() > 2:
-                assert injected_inputs.shape[1] == 1, "Only support decoding with 1 token at a time for now"
+                assert (
+                    injected_inputs.shape[1] == 1
+                ), "Only support decoding with 1 token at a time for now"
                 injected_inputs = injected_inputs.squeeze(1)
             zxbcdt += injected_inputs
 
-        d_mlp = (zxbcdt.shape[-1] - 2 * self.d_ssm - 2 * self.ngroups * self.d_state - self.nheads) // 2
+        d_mlp = (
+            zxbcdt.shape[-1]
+            - 2 * self.d_ssm
+            - 2 * self.ngroups * self.d_state
+            - self.nheads
+        ) // 2
         z0, x0, z, xBC, dt = torch.split(
-            zxbcdt, [d_mlp, d_mlp, self.d_ssm, self.d_ssm + 2 * self.ngroups * self.d_state, self.nheads], dim=-1
+            zxbcdt,
+            [
+                d_mlp,
+                d_mlp,
+                self.d_ssm,
+                self.d_ssm + 2 * self.ngroups * self.d_state,
+                self.nheads,
+            ],
+            dim=-1,
         )
 
         # Conv step
-        new_conv_state = torch.roll(conv_state, shifts=-1, dims=-1)  # Update state (B D W)
+        new_conv_state = torch.roll(
+            conv_state, shifts=-1, dims=-1
+        )  # Update state (B D W)
         new_conv_state[:, :, -1] = xBC
-        xBC = torch.sum(new_conv_state * rearrange(self.conv1d.weight, "d 1 w -> d w"), dim=-1)  # (B D)
+        xBC = torch.sum(
+            new_conv_state * rearrange(self.conv1d.weight, "d 1 w -> d w"), dim=-1
+        )  # (B D)
         if self.conv1d.bias is not None:
             xBC = xBC + self.conv1d.bias
         xBC = self.act(xBC).to(dtype=dtype)
 
-        x, B, C = torch.split(xBC, [self.d_ssm, self.ngroups * self.d_state, self.ngroups * self.d_state], dim=-1)
+        x, B, C = torch.split(
+            xBC,
+            [self.d_ssm, self.ngroups * self.d_state, self.ngroups * self.d_state],
+            dim=-1,
+        )
         A = -torch.exp(self.A_log.float())  # (nheads,)
 
         # SSM step
@@ -690,12 +795,27 @@ class Mamba2(nn.Module):
 
     def allocate_inference_cache(self, batch_size, device, dtype=None, **kwargs):
         conv_dtype = self.conv1d.weight.dtype if dtype is None else dtype
-        conv_state = torch.zeros(batch_size, self.conv1d.weight.shape[0], self.d_conv, device=device, dtype=conv_dtype)
+        conv_state = torch.zeros(
+            batch_size,
+            self.conv1d.weight.shape[0],
+            self.d_conv,
+            device=device,
+            dtype=conv_dtype,
+        )
         ssm_dtype = self.in_proj.weight.dtype if dtype is None else dtype
-        ssm_state = torch.zeros(batch_size, self.nheads, self.headdim, self.d_state, device=device, dtype=ssm_dtype)
+        ssm_state = torch.zeros(
+            batch_size,
+            self.nheads,
+            self.headdim,
+            self.d_state,
+            device=device,
+            dtype=ssm_dtype,
+        )
         return conv_state, ssm_state
 
-    def _get_states_from_cache(self, inference_params, batch_size, initialize_states=False):
+    def _get_states_from_cache(
+        self, inference_params, batch_size, initialize_states=False
+    ):
         assert self.layer_idx is not None
         if self.layer_idx not in inference_params.key_value_memory_dict:
             batch_shape = (batch_size,)
@@ -714,9 +834,14 @@ class Mamba2(nn.Module):
                 device=self.in_proj.weight.device,
                 dtype=self.in_proj.weight.dtype,
             )
-            inference_params.key_value_memory_dict[self.layer_idx] = (conv_state, ssm_state)
+            inference_params.key_value_memory_dict[self.layer_idx] = (
+                conv_state,
+                ssm_state,
+            )
         else:
-            conv_state, ssm_state = inference_params.key_value_memory_dict[self.layer_idx]
+            conv_state, ssm_state = inference_params.key_value_memory_dict[
+                self.layer_idx
+            ]
             # TODO: What if batch size changes between generation, and we reuse the same states?
             if initialize_states:
                 conv_state.zero_()
