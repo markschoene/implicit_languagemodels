@@ -216,7 +216,6 @@ class ImplicitMixin(nn.Module):
             "rel diff": diff_rel,
             "steps": steps,
         }
-        print(log_dict)
         return final_output, log_dict
 
     def _sequential_forward(
