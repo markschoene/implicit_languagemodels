@@ -17,7 +17,7 @@
     "d_model": 768,
     "dropout": 0.0,
     "init_gain": 0.5,
-    "n_layer": 32,
+    "n_layer": 24,
     "pre_norm": true,
     "pretrain_iter": 4,
     "pretrain_steps": 0,
@@ -49,7 +49,7 @@
       "b_tol": 0.001,
       "eval_f_max_iter": 0,
       "eval_factor": 4.0,
-      "f_max_iter": 24,
+      "f_max_iter": 32,
       "f_solver": "fixed_point_iter",
       "f_stop_mode": "rel",
       "f_tol": 0.05
